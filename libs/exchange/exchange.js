@@ -2,14 +2,15 @@ import ccxt from 'ccxt';
 import ObjectsToCsv from 'objects-to-csv';
 
 class Exchange {
-  constructor(exchange) {
+  constructor(exchangeName, exchange) {
+    this.exchangeName = exchangeName;
     this.exchange = exchange;
   }
 
   static async create(exchangeName) {
     const exchange = new ccxt[exchangeName]();
     await exchange.loadMarkets();
-    return new this(exchange);
+    return new this(exchangeName, exchange);
   }
 
   async getTrades(pair, sinceDate = Date.now() - 10000, rows = 1000) {
@@ -25,11 +26,11 @@ class Exchange {
         cost: trade.cost,
       }));
     const csv = new ObjectsToCsv(trades);
-    await csv.toDisk(`./data/trades_${Date.now()}.csv`);
+    await csv.toDisk(`./data/trades_${this.exchangeName}_${Date.now()}.csv`);
     return trades;
   }
 }
 
 const exchange = await Exchange.create('binance');
 const trades = await exchange.getTrades('AVAX/USDT');
-console.log(trades);
+console.table(trades);
