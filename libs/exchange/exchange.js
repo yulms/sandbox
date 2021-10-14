@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import ccxt from 'ccxt';
 import ObjectsToCsv from 'objects-to-csv';
 
@@ -7,14 +8,15 @@ class Exchange {
     this.exchange = exchange;
   }
 
-  static async create(exchangeName) {
-    const exchange = new ccxt[exchangeName]();
+  static async create(exchangeName, keys) {
+    const exchange = new ccxt[exchangeName](keys);
     await exchange.loadMarkets();
     return new this(exchangeName, exchange);
   }
 
-  async getTrades(pair, sinceDate = Date.now() - 10000, rows = 1000) {
-    const since = new Date(sinceDate).getTime();
+  async getTrades(pair, sinceDate, rows = 3000) {
+    console.log(`Получена дата: ${sinceDate}`);
+    const since = sinceDate.getTime();
     const allTrades = await this.exchange.fetchTrades(pair, since, rows);
     const trades = allTrades
       .map((trade) => ({
@@ -26,11 +28,26 @@ class Exchange {
         cost: trade.cost,
       }));
     const csv = new ObjectsToCsv(trades);
-    await csv.toDisk(`./data/trades_${this.exchangeName}_${Date.now()}.csv`);
+    await csv.toDisk(`./data/trades_${this.exchangeName}_${pair.replace('/', '')}_${Date.now()}.csv`);
     return trades;
+  }
+
+  async fetchMyTrades(symbol) {
+    console.log(symbol);
+    // return this.exchange.fetchMyTrades(symbol);
+    return this.exchange.fetchOrders(symbol);
   }
 }
 
-const exchange = await Exchange.create('binance');
-const trades = await exchange.getTrades('AVAX/USDT');
-console.table(trades);
+const apiKeys = {
+  apiKey: process.env.BINANCE_ACCESS_KEY,
+  secret: process.env.BINANCE_SECRET_KEY,
+};
+
+const exchange = await Exchange.create('binance', apiKeys);
+const orders = await exchange.fetchMyTrades('BADGER/USDT');
+console.log(orders);
+
+// const date = new Date(Date.UTC(2021, 9, 13, 19, 6));
+// const trades = await exchange.getTrades('BADGER/USDT', date, 3000);
+// console.table(trades);
